@@ -7,11 +7,11 @@ repos:
       - id: ruff-format
 
   # Automatically sorts and formats Python imports
-  # - repo: https://github.com/pycqa/isort
-  #   rev: 5.13.2
-  #   hooks:
-  #     - id: isort
-  #       args: ["--profile", "black"]
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
 
   # Static type checker
   # - repo: https://github.com/pre-commit/mirrors-mypy

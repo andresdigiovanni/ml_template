@@ -1,0 +1,19 @@
+data:
+    type: "sklearn"
+    source: "wine"
+    target_column: "target"
+
+logging:
+    log_file: app.log
+    log_level: 20 # 10 Debug, 20 Info, 30 Warning, 40 Error, 50 Critical
+
+model:
+    type: "random_forest_classifier"
+    problem_type: "classification"
+    scoring: "accuracy"
+    direction: "maximize"
+
+object_connector:
+    type: "local"
+    params:
+        base_path: "data/"
