@@ -60,10 +60,17 @@ class InferencePipeline:
         # Generate predictions using the model
         self.logger.info("Generating predictions...")
         predictions = self.model.predict(transformed_data)
+        predictions_prob = self.model.predict_proba(transformed_data)
 
         # Save the predictions and the original data
         results = data.copy()
-        results["prediction"] = predictions
+        results["predictions"] = predictions
+
+        if predictions_prob.shape[1] > 1:
+            for i, class_prob in enumerate(predictions_prob.T):
+                results[f"predictions_prob_class_{i}"] = class_prob
+        else:
+            results["predictions_prob"] = predictions_prob.flatten()
 
         # Store results in a file
         self.object_connector.put_object(results, "predictions.csv")

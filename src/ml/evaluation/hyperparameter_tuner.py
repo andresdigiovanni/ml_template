@@ -1,8 +1,10 @@
+from typing import Callable, Union
+
 import numpy as np
 import optuna
 from sklearn.base import BaseEstimator
-from sklearn.metrics import get_scorer
-from sklearn.model_selection import KFold
+
+from .cross_val_score import cross_val_score
 
 
 class HyperparameterTuner:
@@ -23,7 +25,7 @@ class HyperparameterTuner:
     def __init__(
         self,
         model: BaseEstimator,
-        scoring: str,
+        scoring: Union[str, Callable],
         direction: str,
         param_grid: dict = None,
         cv: int = 5,
@@ -41,7 +43,7 @@ class HyperparameterTuner:
             n_trials (int, optional): Number of optimization trials. Default is 50.
         """
         self.model = model
-        self.scoring = scoring if callable(scoring) else get_scorer(scoring)._score_func
+        self.scoring = scoring
         self.direction = direction
         self.param_grid = param_grid or self._get_default_param_grid(
             model.__class__.__name__
@@ -147,33 +149,8 @@ class HyperparameterTuner:
                 params[key] = trial.suggest_float(key, range_[0], range_[1], log=log)
 
         self.model.set_params(**params)
-        scores = self._cross_val_score(self.model, X, y)
+        scores, _, _, _ = cross_val_score(self.model, X, y, self.scoring, self.cv)
         return np.mean(scores)
-
-    def _cross_val_score(self, model, X, y) -> list:
-        """
-        Performs cross-validation and computes scores.
-
-        Args:
-            model (BaseEstimator): Machine learning model.
-            X (pd.DataFrame): Feature matrix.
-            y (pd.Series): Target vector.
-
-        Returns:
-            list: List of scores for each fold.
-        """
-        kf = KFold(n_splits=self.cv, shuffle=True, random_state=42)
-        scores = []
-
-        for train_idx, val_idx in kf.split(X):
-            x_train, x_val = X.iloc[train_idx], X.iloc[val_idx]
-            y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
-
-            model.fit(x_train, y_train)
-            y_pred = model.predict(x_val)
-            scores.append(self.scoring(y_val, y_pred))
-
-        return scores
 
     def fit(self, X, y) -> dict:
         """

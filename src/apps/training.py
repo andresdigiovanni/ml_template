@@ -3,7 +3,7 @@ from sklearn.ensemble import RandomForestClassifier
 from src.configs import load_config
 from src.data.connectors import create_data_connector, create_object_connector
 from src.data.preprocessors import DataProcessor
-from src.ml.evaluation import HyperparameterTuner, Metrics
+from src.ml.evaluation import HyperparameterTuner
 from src.ml.pipelines import TrainingPipeline
 from src.utils import Logger
 
@@ -38,7 +38,6 @@ def main():
 
         # Initialize data preprocessor and hyperparameter tuner
         data_processor = DataProcessor(model, config["model"]["scoring"], direction)
-        metrics = Metrics(config["model"]["problem_type"])
         hyperparameter_tuner = HyperparameterTuner(
             model,
             config["model"]["scoring"],
@@ -48,11 +47,11 @@ def main():
         # Create and configure the training pipeline
         pipeline = TrainingPipeline(
             model,
-            metrics,
             hyperparameter_tuner,
             data_processor,
             object_connector,
             logger,
+            problem_type=config["model"]["problem_type"],
         )
 
         # Run the training pipeline

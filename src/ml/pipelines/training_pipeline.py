@@ -1,12 +1,14 @@
-from typing import Any
-
 import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import train_test_split
 
 from src.data.connectors import BaseObjectConnector
 from src.data.preprocessors import DataProcessor
-from src.ml.evaluation import HyperparameterTuner
+from src.ml.evaluation import (
+    HyperparameterTuner,
+    compute_metrics,
+    create_roc_auc_figure,
+)
 from src.utils import Logger
 
 
@@ -27,29 +29,29 @@ class TrainingPipeline:
     def __init__(
         self,
         model: BaseEstimator,
-        metrics: Any,
         hyperparameter_tuner: HyperparameterTuner,
         data_processor: DataProcessor,
         object_connector: BaseObjectConnector,
         logger: Logger,
+        problem_type: str,
     ):
         """
         Initializes the pipeline with necessary components.
 
         Args:
             model (BaseEstimator): The machine learning model to be used.
-            metrics (Any): The metrics evaluator used to assess the model's performance.
             hyperparameter_tuner (HyperparameterTuner): The tuner to optimize hyperparameters.
             data_processor (DataProcessor): The processor to handle data transformations.
             object_connector (BaseObjectConnector): The connector for saving models and results.
             logger (Logger): The logger for logging messages.
+            problem_type (str): The type of problem. Either 'classification' or 'regression'.
         """
         self.model = model
-        self.metrics = metrics
         self.hyperparameter_tuner = hyperparameter_tuner
         self.data_processor = data_processor
         self.object_connector = object_connector
         self.logger = logger
+        self.problem_type = problem_type
 
     def run(
         self,
@@ -71,6 +73,7 @@ class TrainingPipeline:
         Returns:
             dict: A dictionary containing the evaluation results.
         """
+
         # Split the data into training and test sets
         self.logger.info("Splitting data into training and test sets...")
         X = data.drop(columns=[target_column])
@@ -85,7 +88,7 @@ class TrainingPipeline:
         X_test = self.data_processor.transform(X_test)
         processor_params = self.data_processor.get_params()
 
-        # Tune the hyperparameters of the model
+        # Hyperparameter tuning
         self.logger.info("Starting hyperparameter tuning...")
         best_params = self.hyperparameter_tuner.fit(X_train, y_train)
 
@@ -97,11 +100,18 @@ class TrainingPipeline:
         # Evaluate the model on the test data
         self.logger.info("Evaluating the model...")
         y_pred = self.model.predict(X_test)
-        results = self.metrics.compute(y_test, y_pred)
+        y_prob = self.model.predict_proba(X_test)
+
+        results = compute_metrics(
+            y_test, y_pred, y_prob, problem_type=self.problem_type
+        )
+
+        figure = create_roc_auc_figure(y_test, y_prob)
 
         # Save the model, results, and parameters
         self.object_connector.put_object(self.model, "model.pkl")
         self.object_connector.put_object(results, "metrics.json")
+        self.object_connector.put_object(figure, "roc_auc_plot.png")
         self.object_connector.put_object(best_params, "params.json")
         self.object_connector.put_object(processor_params, "processor.pkl")
 

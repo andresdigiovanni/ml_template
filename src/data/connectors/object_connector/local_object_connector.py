@@ -3,6 +3,8 @@ import os
 import pickle
 from typing import Any, Optional
 
+import matplotlib.figure
+import matplotlib.pyplot as plt
 import pandas as pd
 
 from src.utils import Logger
@@ -44,6 +46,9 @@ class LocalObjectConnector(BaseObjectConnector):
             ".txt": self._write_txt,
             ".html": lambda data, path: data.to_html(path),
             ".pkl": self._write_pickle,
+            ".png": self._write_image,
+            ".jpg": self._write_image,
+            ".jpeg": self._write_image,
         }
 
     def _read_json(self, file_path: str) -> Any:
@@ -117,6 +122,17 @@ class LocalObjectConnector(BaseObjectConnector):
         """
         with open(file_path, "wb") as file:
             pickle.dump(data, file)
+
+    def _write_image(self, data: matplotlib.figure.Figure, file_path: str) -> None:
+        """
+        Saves a matplotlib Figure object as an image.
+
+        Args:
+            data (matplotlib.figure.Figure): Figure to save.
+            file_path (str): Destination file path.
+        """
+        data.savefig(file_path, dpi=300, bbox_inches="tight")
+        plt.close(data)
 
     def get_object(self, object_path: str) -> Any:
         """
