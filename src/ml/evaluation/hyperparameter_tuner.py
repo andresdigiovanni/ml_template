@@ -115,7 +115,6 @@ class HyperparameterTuner:
                 "reg_alpha": {"range": (1e-6, 10.0), "log": True},
                 "reg_lambda": {"range": (1e-6, 10.0), "log": True},
                 "subsample": {"range": (0.5, 1.0)},
-                "scale_pos_weight": {"range": (1e-2, 10.0), "log": True},
                 "max_bin": {"range": (128, 512)},
                 "grow_policy": {"range": ["depthwise", "lossguide"]},
             }

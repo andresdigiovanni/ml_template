@@ -5,9 +5,10 @@ from sklearn.model_selection import train_test_split
 from src.data.connectors import BaseObjectConnector
 from src.data.preprocessors import DataProcessor
 from src.ml.evaluation import (
+    ConfusionMatrixFigure,
     HyperparameterTuner,
+    RocAucFigure,
     compute_metrics,
-    create_roc_auc_figure,
 )
 from src.utils import Logger
 
@@ -102,17 +103,19 @@ class TrainingPipeline:
         y_pred = self.model.predict(X_test)
         y_prob = self.model.predict_proba(X_test)
 
-        results = compute_metrics(
-            y_test, y_pred, y_prob, problem_type=self.problem_type
+        metrics = compute_metrics(self.model, X_test, y_test, self.problem_type)
+
+        roc_auc_figure = RocAucFigure.create_figure(y_test, y_prob, self.model.classes_)
+        cm_figure = ConfusionMatrixFigure.create_figure(
+            y_test, y_pred, self.model.classes_
         )
 
-        figure = create_roc_auc_figure(y_test, y_prob)
-
-        # Save the model, results, and parameters
+        # Save the model, metrics, and parameters
         self.object_connector.put_object(self.model, "model.pkl")
-        self.object_connector.put_object(results, "metrics.json")
-        self.object_connector.put_object(figure, "roc_auc_plot.png")
+        self.object_connector.put_object(metrics, "metrics.json")
+        self.object_connector.put_object(roc_auc_figure, "roc_auc_plot.png")
+        self.object_connector.put_object(cm_figure, "confusion_matrix.png")
         self.object_connector.put_object(best_params, "params.json")
         self.object_connector.put_object(processor_params, "processor.pkl")
 
-        return results
+        return metrics

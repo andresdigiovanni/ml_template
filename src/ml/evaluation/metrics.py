@@ -1,9 +1,12 @@
 from typing import Dict, Optional, Union
 
 import numpy as np
+import pandas as pd
+from sklearn.base import BaseEstimator
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
+    log_loss,
     mean_absolute_error,
     mean_squared_error,
     precision_score,
@@ -15,18 +18,18 @@ from sklearn.preprocessing import label_binarize
 
 
 def compute_metrics(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    y_prob: Optional[np.ndarray] = None,
+    model: BaseEstimator,
+    X: pd.DataFrame,
+    y: Union[pd.Series, np.ndarray],
     problem_type: str = "classification",
 ) -> Dict[str, Union[float, Dict[str, float]]]:
     """
     Compute evaluation metrics for classification or regression problems.
 
     Args:
-        y_true (np.ndarray): Ground truth labels or target values.
-        y_pred (np.ndarray): Predicted labels or values.
-        y_prob (np.ndarray, optional): Predicted probabilities for classification (default is None).
+        model (BaseEstimator): The machine learning model to evaluate.
+        X (pd.DataFrame): Feature matrix.
+        y (pd.Series or np.ndarray): Target vector.
         problem_type (str): The type of problem. Either 'classification' or 'regression'.
 
     Returns:
@@ -35,11 +38,15 @@ def compute_metrics(
     Raises:
         ValueError: If problem_type is not 'classification' or 'regression'.
     """
+
+    y_pred = model.predict(X)
+
     if problem_type == "classification":
-        return _compute_classification_metrics(y_true, y_pred, y_prob)
+        y_prob = model.predict_proba(X)
+        return _compute_classification_metrics(y, y_pred, y_prob)
 
     elif problem_type == "regression":
-        return _compute_regression_metrics(y_true, y_pred)
+        return _compute_regression_metrics(y, y_pred)
 
     else:
         raise ValueError(
@@ -70,18 +77,22 @@ def _compute_classification_metrics(
         "f1_score": f1_score(y_true, y_pred, average="weighted"),
     }
 
-    # Handle ROC AUC for binary and multiclass cases
     if y_prob is not None:
         unique_classes = np.unique(y_true)
 
-        # Binarize y_true for multiclass ROC AUC
-        if len(unique_classes) > 2:
+        # ROC AUC
+        if len(unique_classes) == 2:
+            y_prob_positive = y_prob[:, 1]  # Probabilities of positive class
+            metrics["roc_auc"] = roc_auc_score(y_true, y_prob_positive)
+
+        else:
             y_true_binarized = label_binarize(y_true, classes=unique_classes)
             metrics["roc_auc"] = roc_auc_score(
                 y_true_binarized, y_prob, multi_class="ovr", average="macro"
             )
-        else:
-            metrics["roc_auc"] = roc_auc_score(y_true, y_prob)
+
+        # Log Loss
+        metrics["log_loss"] = log_loss(y_true, y_prob)
 
     return metrics
 

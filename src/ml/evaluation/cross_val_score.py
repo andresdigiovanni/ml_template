@@ -1,10 +1,13 @@
+from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
-from sklearn.metrics import get_scorer
+from sklearn.metrics import get_scorer, make_scorer
 from sklearn.model_selection import KFold, StratifiedKFold
+
+from src.utils import subset_data
 
 
 def cross_val_score(
@@ -22,7 +25,8 @@ def cross_val_score(
         model (BaseEstimator): The machine learning model to evaluate.
         X (pd.DataFrame): Feature matrix.
         y (pd.Series or np.ndarray): Target vector.
-        scoring (str or Callable): Scoring method. Can be a string (e.g., 'accuracy') or a custom callable.
+        scoring (str or Callable): Scoring method. Can be a string (e.g., 'accuracy') or a callable function with signature
+            ``scorer(estimator, X, y)`` which should return only a single value.
         cv (int, optional): Number of cross-validation splits. Defaults to 5.
         stratify (bool, optional): Whether to use stratified splitting for classification problems. Defaults to True.
 
@@ -41,8 +45,8 @@ def cross_val_score(
     all_y_prob = []
 
     for train_idx, val_idx in splitter.split(X, y):
-        X_train, X_val = _extract_data(X, train_idx), _extract_data(X, val_idx)
-        y_train, y_val = _extract_data(y, train_idx), _extract_data(y, val_idx)
+        X_train, X_val = subset_data(X, train_idx), subset_data(X, val_idx)
+        y_train, y_val = subset_data(y, train_idx), subset_data(y, val_idx)
 
         model.fit(X_train, y_train)
         y_pred = model.predict(X_val)
@@ -52,11 +56,10 @@ def cross_val_score(
         all_y_pred.append(y_pred)
         all_y_prob.append(y_prob)
 
-        try:
-            scores.append(scoring_function(y_val, y_pred, y_prob))
+        scores.append(scoring_function(model, X_val, y_val))
 
-        except TypeError:
-            scores.append(scoring_function(y_val, y_pred))
+    if any(isinstance(item, dict) for item in scores):
+        scores = _average_metrics(scores)
 
     return (
         scores,
@@ -97,29 +100,25 @@ def _get_scoring_function(scoring: Union[str, Callable]) -> Callable:
     Returns:
         Callable: Scoring function.
     """
-    return scoring if callable(scoring) else get_scorer(scoring)._score_func
+    return (
+        scoring if callable(scoring) else make_scorer(get_scorer(scoring)._score_func)
+    )
 
 
-def _extract_data(
-    data: Union[pd.DataFrame, pd.Series, np.ndarray], indices: np.ndarray
-) -> Union[pd.DataFrame, pd.Series, np.ndarray]:
+def _average_metrics(scores: List[Dict[str, float]]) -> Dict[str, float]:
     """
-    Extract a subset of data using the given indices.
+    Averages a list of metric dictionaries.
 
     Args:
-        data (Union[pd.DataFrame, pd.Series, np.ndarray]): Input data.
-        indices (np.ndarray): Indices to extract.
+        scores (List[Dict[str, float]]): A list of dictionaries where each dictionary
+            contains metric names as keys and their respective scores as values.
 
     Returns:
-        Union[pd.DataFrame, pd.Series, np.ndarray]: Extracted subset of data.
-
-    Raises:
-        TypeError: If the data type is not compatible.
+        Dict[str, float]: A dictionary with the averaged metrics.
     """
-    if isinstance(data, (pd.DataFrame, pd.Series)):
-        return data.iloc[indices]
+    results = defaultdict(float)
+    for metrics in scores:
+        for key in metrics:
+            results[key] += metrics[key]
 
-    if isinstance(data, np.ndarray):
-        return data[indices]
-
-    raise TypeError(f"Unsupported data type: {type(data)}")
+    return {key: value / len(scores) for key, value in results.items()}
