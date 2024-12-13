@@ -2,7 +2,7 @@ from typing import Optional
 
 import pandas as pd
 
-from src.utils import Logger
+from src.utils.logging import Logger
 
 from .base_data_connector import BaseDataConnector
 

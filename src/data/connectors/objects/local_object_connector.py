@@ -7,7 +7,7 @@ import matplotlib.figure
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from src.utils import Logger
+from src.utils.logging import Logger
 
 from .base_object_connector import BaseObjectConnector
 
@@ -36,7 +36,7 @@ class LocalObjectConnector(BaseObjectConnector):
             ".parquet": pd.read_parquet,
             ".json": self._read_json,
             ".txt": self._read_txt,
-            ".html": pd.read_html,
+            ".html": self._read_html,
             ".pkl": self._read_pickle,
         }
         self.writers = {
@@ -44,7 +44,7 @@ class LocalObjectConnector(BaseObjectConnector):
             ".parquet": lambda data, path: data.to_parquet(path),
             ".json": self._write_json,
             ".txt": self._write_txt,
-            ".html": lambda data, path: data.to_html(path),
+            ".html": self._write_html,
             ".pkl": self._write_pickle,
             ".png": self._write_image,
             ".jpg": self._write_image,
@@ -133,6 +133,16 @@ class LocalObjectConnector(BaseObjectConnector):
         """
         data.savefig(file_path, dpi=300, bbox_inches="tight")
         plt.close(data)
+
+    def _read_html(self, path):
+        """Lee un archivo HTML como un string."""
+        with open(path, "r", encoding="utf-8") as file:
+            return file.read()
+
+    def _write_html(self, data, path):
+        """Escribe un string HTML en un archivo."""
+        with open(path, "w", encoding="utf-8") as file:
+            file.write(data)
 
     def get_object(self, object_path: str) -> Any:
         """

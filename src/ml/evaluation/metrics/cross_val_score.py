@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
@@ -7,7 +6,8 @@ from sklearn.base import BaseEstimator
 from sklearn.metrics import get_scorer, make_scorer
 from sklearn.model_selection import KFold, StratifiedKFold
 
-from src.utils import subset_data
+from src.utils.data import subset_data
+from src.utils.metrics import average_metrics
 
 
 def cross_val_score(
@@ -59,7 +59,7 @@ def cross_val_score(
         scores.append(scoring_function(model, X_val, y_val))
 
     if any(isinstance(item, dict) for item in scores):
-        scores = _average_metrics(scores)
+        scores = average_metrics(scores)
 
     return (
         scores,
@@ -103,22 +103,3 @@ def _get_scoring_function(scoring: Union[str, Callable]) -> Callable:
     return (
         scoring if callable(scoring) else make_scorer(get_scorer(scoring)._score_func)
     )
-
-
-def _average_metrics(scores: List[Dict[str, float]]) -> Dict[str, float]:
-    """
-    Averages a list of metric dictionaries.
-
-    Args:
-        scores (List[Dict[str, float]]): A list of dictionaries where each dictionary
-            contains metric names as keys and their respective scores as values.
-
-    Returns:
-        Dict[str, float]: A dictionary with the averaged metrics.
-    """
-    results = defaultdict(float)
-    for metrics in scores:
-        for key in metrics:
-            results[key] += metrics[key]
-
-    return {key: value / len(scores) for key, value in results.items()}

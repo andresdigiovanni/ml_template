@@ -15,7 +15,7 @@ class DataProcessor:
         transformer (CrossTransformer): Instance of the CrossTransformer class for managing transformations.
     """
 
-    def __init__(self, model, scoring: str, direction: str) -> None:
+    def __init__(self, model, scoring: str = None, direction: str = None) -> None:
         """
         Initializes the DataProcessor with a model, scoring metric, and optimization direction.
 

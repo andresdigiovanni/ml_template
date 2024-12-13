@@ -1,13 +1,12 @@
 from src.configs import load_config
 from src.data.connectors import create_data_connector, create_object_connector
-from src.data.preprocessors import DataProcessor
 from src.ml.pipelines import InferencePipeline
-from src.utils import Logger
+from src.tracking import create_model_tracker
+from src.utils.logging import Logger
 
 
 def main():
     try:
-        # Load configuration from file
         config = load_config()
 
         # Initialize the logger
@@ -26,20 +25,24 @@ def main():
         target_column = config["data"]["target_column"]
         data = data.drop(columns=[target_column])
 
-        # Initialize object connector and load the trained model
+        # Initialize object connector
         object_connector = create_object_connector(
             config["object_connector"]["type"],
             logger,
             **config["object_connector"]["params"],
         )
-        model = object_connector.get_object("model.pkl")
 
-        # Initialize the data processor
-        direction = config["model"]["direction"]
-        data_processor = DataProcessor(model, config["model"]["scoring"], direction)
+        # Initialize model tracker
+        model_tracker = create_model_tracker(
+            config["tracking"]["type"], config["tracking"]["experiment_name"]
+        )
 
         # Create and configure the inference pipeline
-        pipeline = InferencePipeline(model, data_processor, object_connector, logger)
+        pipeline = InferencePipeline(
+            model_tracker=model_tracker,
+            object_connector=object_connector,
+            logger=logger,
+        )
 
         # Run the inference pipeline to generate predictions
         pipeline.run(data)

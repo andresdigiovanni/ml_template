@@ -4,7 +4,8 @@ import numpy as np
 import optuna
 from sklearn.base import BaseEstimator
 
-from .cross_val_score import cross_val_score
+from src.ml.evaluation import cross_val_score
+from src.tracking import BaseModelTracker
 
 
 class HyperparameterTuner:
@@ -15,6 +16,7 @@ class HyperparameterTuner:
         model (BaseEstimator): The machine learning model to optimize.
         scoring (str or callable): Scoring metric, either a string recognized by scikit-learn or a custom callable.
         direction (str): Optimization direction ('maximize' or 'minimize').
+        model_tracker: A model tracker connector for saving models and results.
         param_grid (dict): Hyperparameter search space.
         cv (int): Number of cross-validation folds.
         n_trials (int): Number of optimization trials.
@@ -27,6 +29,7 @@ class HyperparameterTuner:
         model: BaseEstimator,
         scoring: Union[str, Callable],
         direction: str,
+        model_tracker: BaseModelTracker,
         param_grid: dict = None,
         cv: int = 5,
         n_trials: int = 50,
@@ -38,6 +41,7 @@ class HyperparameterTuner:
             model (BaseEstimator): Machine learning model to optimize.
             scoring (str or callable): Scoring metric for evaluation.
             direction (str): Optimization direction ('maximize' or 'minimize').
+            model_tracker (BaseModelTracker): The connector for saving models and results.
             param_grid (dict, optional): Hyperparameter search space.
             cv (int, optional): Number of cross-validation folds. Default is 5.
             n_trials (int, optional): Number of optimization trials. Default is 50.
@@ -45,6 +49,7 @@ class HyperparameterTuner:
         self.model = model
         self.scoring = scoring
         self.direction = direction
+        self.model_tracker = model_tracker
         self.param_grid = param_grid or self._get_default_param_grid(
             model.__class__.__name__
         )
@@ -134,6 +139,7 @@ class HyperparameterTuner:
             float: The mean score across cross-validation folds.
         """
         params = {}
+
         for key, value in self.param_grid.items():
             range_ = value["range"]
             log = value.get("log", False)
@@ -149,7 +155,13 @@ class HyperparameterTuner:
 
         self.model.set_params(**params)
         scores, _, _, _ = cross_val_score(self.model, X, y, self.scoring, self.cv)
-        return np.mean(scores)
+        score_mean = np.mean(scores)
+
+        with self.model_tracker.run(nested=True):
+            self.model_tracker.log_params(params)
+            self.model_tracker.log_metric(self.scoring, score_mean)
+
+        return score_mean
 
     def fit(self, X, y) -> dict:
         """

@@ -3,7 +3,7 @@ from typing import Optional
 import pandas as pd
 from sklearn.datasets import load_diabetes, load_iris, load_wine
 
-from src.utils import Logger
+from src.utils.logging import Logger
 
 from .base_data_connector import BaseDataConnector
 

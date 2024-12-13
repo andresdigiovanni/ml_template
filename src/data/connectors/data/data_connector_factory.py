@@ -1,6 +1,6 @@
 from typing import Optional
 
-from src.utils import Logger
+from src.utils.logging import Logger
 
 from .local_data_connector import LocalDataConnector
 from .sklearn_data_connector import SklearnDataConnector
