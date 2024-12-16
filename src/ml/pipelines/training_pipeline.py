@@ -4,6 +4,7 @@ from sklearn.model_selection import train_test_split
 
 from src.data.preprocessors import DataProcessor
 from src.ml.evaluation import ConfusionMatrixFigure, RocAucFigure, compute_metrics
+from src.ml.explainer import FeatureImportanceExplainer, ModelExplainer
 from src.ml.tuning import HyperparameterTuner
 from src.utils.data import create_predictions_dataframe
 
@@ -92,13 +93,25 @@ class TrainingPipeline:
                 y_test, y_pred, self.model.classes_
             )
 
+            model_explainer = ModelExplainer(self.model, X_train)
+            model_explainer_figures = model_explainer.generate_summary_plot()
+
+            fi_figure = FeatureImportanceExplainer().create_figure(
+                X_train.columns, self.model.feature_importances_
+            )
+
             # Guardar resultados
             self.model_tracker.log_model(self.model, "model.pkl")
+            self.model_tracker.log_artifact(processor_params, "processor.pkl")
             self.model_tracker.log_metrics(metrics)
+            self.model_tracker.log_params(best_params)
             self.model_tracker.log_figure(roc_auc_figure, "roc_auc_plot.png")
             self.model_tracker.log_figure(cm_figure, "confusion_matrix.png")
-            self.model_tracker.log_params(best_params)
-            self.model_tracker.log_artifact(processor_params, "processor.pkl")
+
+            for filename, fig in model_explainer_figures:
+                self.model_tracker.log_figure(fig, filename)
+
+            self.model_tracker.log_figure(fi_figure, "feature_importance.png")
 
             # Save a snapshot of predicted data
             self.logger.info("Saving snapshot of predicted data...")
