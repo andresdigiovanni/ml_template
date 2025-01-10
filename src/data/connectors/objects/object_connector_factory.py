@@ -10,25 +10,27 @@ def create_object_connector(connector_type, logger: Optional[Logger] = None, **k
     Creates an ObjectConnector based on the configuration.
 
     Args:
-        connector_type (str): The type of connector to create.
+        connector_type (str): The type of connector to create. Supported types: "local".
         logger (Optional[Logger]): An optional logger instance.
         **kwargs: Additional keyword arguments for the connector.
 
     Returns:
-        ObjectConnector: An instance of the selected connector.
+        BaseObjectConnector: An instance of the selected connector.
 
     Raises:
         ValueError: If the connector type is unsupported.
     """
+    SUPPORTED_CONNECTORS = {"local": LocalObjectConnector}
 
-    if connector_type == "local":
-        return LocalObjectConnector(logger=logger, **kwargs)
+    if logger:
+        logger.info(f"Creating object connector for type: '{connector_type}'")
 
-    elif connector_type == "s3":
-        raise NotImplementedError("The connector for S3 is not implemented yet.")
-
-    elif connector_type == "gcs":
-        raise NotImplementedError("The connector for GCS is not implemented yet.")
+    if connector_type in SUPPORTED_CONNECTORS:
+        return SUPPORTED_CONNECTORS[connector_type](logger=logger, **kwargs)
 
     else:
-        raise ValueError(f"Connector type '{connector_type}' is not supported.")
+        error_message = f"Connector '{connector_type}' is not supported."
+        if logger:
+            logger.error(error_message)
+
+        raise ValueError(error_message)

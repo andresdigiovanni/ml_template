@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
 
 
 class BaseModelTracker(ABC):
@@ -10,7 +11,7 @@ class BaseModelTracker(ABC):
     """
 
     @abstractmethod
-    def __init__(self, experiment_name):
+    def __init__(self, experiment_name: str):
         """
         Initialize the model tracker with a given experiment name.
 
@@ -20,7 +21,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def run_id(self):
+    def run_id(self) -> str:
         """
         Retrieve the current run ID.
 
@@ -30,7 +31,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def run(self, run_name=None, nested=False):
+    def run(self, run_name: Optional[str] = None, nested: bool = False):
         """
         Context manager for managing a run's lifecycle.
 
@@ -44,7 +45,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def start_run(self, run_name=None, nested=False):
+    def start_run(self, run_name: Optional[str] = None, nested: bool = False):
         """
         Start a new run.
 
@@ -62,7 +63,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def log_param(self, name, value):
+    def log_param(self, name: str, value: Any):
         """
         Log a single parameter.
 
@@ -73,7 +74,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def log_params(self, params):
+    def log_params(self, params: Dict[str, Any]):
         """
         Log multiple parameters.
 
@@ -83,7 +84,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def log_metric(self, name, value):
+    def log_metric(self, name: str, value: float):
         """
         Log a single metric.
 
@@ -94,7 +95,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def log_metrics(self, metrics):
+    def log_metrics(self, metrics: Dict[str, float]):
         """
         Log multiple metrics.
 
@@ -104,7 +105,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def log_dict(self, name, obj):
+    def log_dict(self, name: str, obj: Dict[Any, Any]):
         """
         Log a dictionary as an artifact.
 
@@ -115,7 +116,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def log_figure(self, fig, name):
+    def log_figure(self, fig: Any, name: str):
         """
         Log a figure as an artifact.
 
@@ -126,7 +127,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def log_model(self, model, artifact_path):
+    def log_model(self, model: Any, artifact_path: str):
         """
         Log a model as an artifact.
 
@@ -137,7 +138,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def log_artifact(self, artifact, artifact_path):
+    def log_artifact(self, artifact: Any, artifact_path: str):
         """
         Log an artifact by serializing it to a file.
 
@@ -148,7 +149,9 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def search_last_run(self, run_name=None, status="FINISHED"):
+    def search_last_run(
+        self, run_name: Optional[str] = None, status: str = "FINISHED"
+    ) -> Any:
         """
         Search for the last run with the specified name and status.
 
@@ -162,7 +165,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def load_dict(self, artifact_uri):
+    def load_dict(self, artifact_uri: str) -> Dict[Any, Any]:
         """
         Load a dictionary artifact from the specified URI.
 
@@ -175,7 +178,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def load_model(self, model_uri):
+    def load_model(self, model_uri: str) -> Any:
         """
         Load a model artifact from the specified URI.
 
@@ -188,7 +191,7 @@ class BaseModelTracker(ABC):
         pass
 
     @abstractmethod
-    def load_artifact(self, artifact_uri):
+    def load_artifact(self, artifact_uri: str) -> Any:
         """
         Load an artifact from the specified URI.
 

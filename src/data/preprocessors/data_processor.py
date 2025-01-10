@@ -1,43 +1,52 @@
+from typing import Optional, Union
+
+import numpy as np
+import pandas as pd
 from cross import CrossTransformer, auto_transform
 
 
 class DataProcessor:
     """
-    Class for automating data preprocessing and feature transformations using CrossTransformer.
-
-    This class provides an interface for fitting transformations, applying them,
-    and customizing the pipeline for feature engineering and preprocessing.
+    Automates data preprocessing and feature transformations using CrossTransformer.
 
     Attributes:
-        model: The machine learning model used for optimization in auto-transformations.
+        model: The ML model used for optimization in auto-transformations.
         scoring (str): Scoring metric to evaluate transformations.
-        direction (str): Optimization direction, typically 'maximize' or 'minimize'.
-        transformer (CrossTransformer): Instance of the CrossTransformer class for managing transformations.
+        direction (str): Optimization direction ('maximize' or 'minimize').
+        transformer (CrossTransformer): Manages transformations.
     """
 
-    def __init__(self, model, scoring: str = None, direction: str = None) -> None:
+    def __init__(
+        self, model, scoring: Optional[str] = None, direction: Optional[str] = None
+    ) -> None:
         """
-        Initializes the DataProcessor with a model, scoring metric, and optimization direction.
+        Initializes the DataProcessor.
 
         Args:
             model: The machine learning model to guide the transformation process.
-            scoring (str): Scoring metric for evaluating transformations (e.g., 'accuracy', 'r2').
-            direction (str): Direction of optimization ('maximize' or 'minimize').
+            scoring (Optional[str]): Scoring metric (e.g., 'accuracy', 'r2').
+            direction (Optional[str]): Direction of optimization ('maximize' or 'minimize').
+
+        Raises:
+            ValueError: If direction is not 'maximize' or 'minimize'.
         """
+        if direction not in {None, "maximize", "minimize"}:
+            raise ValueError("`direction` must be 'maximize', 'minimize', or None.")
+
         self.model = model
         self.scoring = scoring
         self.direction = direction
-        self.transformer = None
+        self.transformer: Optional[CrossTransformer] = None
 
     def get_params(self) -> dict:
         """
-        Retrieves the current transformation parameters.
+        Retrieves current transformation parameters.
 
         Returns:
-            dict: Parameters of the current transformation pipeline.
+            dict: Parameters of the transformation pipeline.
 
         Raises:
-            RuntimeError: If no transformations are set (i.e., fit() has not been called).
+            RuntimeError: If fit() has not been called.
         """
         if self.transformer is None:
             raise RuntimeError("No transformations are set. Call fit() first.")
@@ -50,60 +59,68 @@ class DataProcessor:
 
         Args:
             transformations (dict): A dictionary defining the transformations to apply.
-
-        Example:
-            transformations = {
-                "scaling": {"method": "standard"},
-                "feature_selection": {"threshold": 0.1},
-            }
         """
         self.transformer = CrossTransformer()
         self.transformer.set_params(**transformations)
 
-    def fit(self, X, y=None) -> "DataProcessor":
+    def fit(
+        self,
+        X: Union[pd.DataFrame, np.ndarray],
+        y: Optional[Union[pd.Series, np.ndarray]] = None,
+    ) -> "DataProcessor":
         """
-        Automatically fits transformations to the provided data using the given model and scoring.
+        Fits transformations to the data using the model and scoring.
 
         Args:
             X (pd.DataFrame or np.ndarray): Feature data.
-            y (pd.Series or np.ndarray, optional): Target data.
+            y (Optional[pd.Series or np.ndarray]): Target data.
 
         Returns:
-            DataProcessor: The fitted DataProcessor instance.
+            DataProcessor: The fitted instance.
         """
-        transformations = auto_transform(X, y, self.model, self.scoring, self.direction)
-        self.transformer = CrossTransformer(transformations)
+        self.transformations = auto_transform(
+            X, y, self.model, self.scoring, self.direction
+        )
+        self.transformer = CrossTransformer(self.transformations)
         self.transformer.fit(X, y)
         return self
 
-    def transform(self, X, y=None):
+    def transform(
+        self,
+        X: Union[pd.DataFrame, np.ndarray],
+        y: Optional[Union[pd.Series, np.ndarray]] = None,
+    ) -> Union[pd.DataFrame, np.ndarray]:
         """
-        Applies the fitted transformations to the data.
+        Applies transformations to the data.
 
         Args:
             X (pd.DataFrame or np.ndarray): Feature data.
-            y (pd.Series or np.ndarray, optional): Target data.
+            y (Optional[pd.Series or np.ndarray]): Target data.
 
         Returns:
-            Transformed data (pd.DataFrame or np.ndarray).
+            Transformed data.
 
         Raises:
-            RuntimeError: If fit() has not been called before transform().
+            TransformationNotFittedError: If fit() has not been called.
         """
         if self.transformer is None:
             raise RuntimeError("fit() must be called before applying transform().")
 
         return self.transformer.transform(X, y)
 
-    def fit_transform(self, X, y=None):
+    def fit_transform(
+        self,
+        X: Union[pd.DataFrame, np.ndarray],
+        y: Optional[Union[pd.Series, np.ndarray]] = None,
+    ) -> Union[pd.DataFrame, np.ndarray]:
         """
-        Fits and transforms the data in a single step.
+        Fits and transforms the data.
 
         Args:
             X (pd.DataFrame or np.ndarray): Feature data.
-            y (pd.Series or np.ndarray, optional): Target data.
+            y (Optional[pd.Series or np.ndarray]): Target data.
 
         Returns:
-            Transformed data (pd.DataFrame or np.ndarray).
+            Transformed data.
         """
         return self.fit(X, y).transform(X, y)

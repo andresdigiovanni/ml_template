@@ -1,2 +1,2 @@
-from .cross_val_score import cross_val_score
+from .cross_validate_with_predictions import cross_validate_with_predictions
 from .metrics import compute_metrics

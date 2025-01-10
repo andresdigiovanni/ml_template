@@ -3,8 +3,8 @@ from typing import Callable, Union
 import numpy as np
 import optuna
 from sklearn.base import BaseEstimator
+from sklearn.model_selection import cross_validate
 
-from src.ml.evaluation import cross_val_score
 from src.tracking import BaseModelTracker
 
 
@@ -31,7 +31,7 @@ class HyperparameterTuner:
         direction: str,
         model_tracker: BaseModelTracker,
         param_grid: dict = None,
-        cv: int = 5,
+        cv: Union[int, Callable] = 5,
         n_trials: int = 50,
     ):
         """
@@ -112,13 +112,13 @@ class HyperparameterTuner:
         elif model_name in ("XGBClassifier", "XGBRegressor"):
             return {
                 "colsample_bytree": {"range": (0.5, 1.0)},
-                "gamma": {"range": (1e-6, 1.0), "log": True},
+                "gamma": {"range": (1e-4, 1.0), "log": True},
                 "learning_rate": {"range": (1e-4, 0.3), "log": True},
                 "max_depth": {"range": (4, 20)},
-                "min_child_weight": {"range": (1e-6, 10.0), "log": True},
+                "min_child_weight": {"range": (1e-4, 10.0), "log": True},
                 "n_estimators": {"range": (20, 200)},
-                "reg_alpha": {"range": (1e-6, 10.0), "log": True},
-                "reg_lambda": {"range": (1e-6, 10.0), "log": True},
+                "reg_alpha": {"range": (1e-4, 10.0), "log": True},
+                "reg_lambda": {"range": (1e-4, 10.0), "log": True},
                 "subsample": {"range": (0.5, 1.0)},
                 "max_bin": {"range": (128, 512)},
                 "grow_policy": {"range": ["depthwise", "lossguide"]},
@@ -154,8 +154,8 @@ class HyperparameterTuner:
                 params[key] = trial.suggest_float(key, range_[0], range_[1], log=log)
 
         self.model.set_params(**params)
-        scores, _, _, _ = cross_val_score(self.model, X, y, self.scoring, self.cv)
-        score_mean = np.mean(scores)
+        scores = cross_validate(self.model, X, y, scoring=self.scoring, cv=self.cv)
+        score_mean = np.mean(scores["test_score"])
 
         with self.model_tracker.run(nested=True):
             self.model_tracker.log_params(params)

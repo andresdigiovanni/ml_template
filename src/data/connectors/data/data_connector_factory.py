@@ -2,35 +2,40 @@ from typing import Optional
 
 from src.utils.logging import Logger
 
+from .base_data_connector import BaseDataConnector
 from .local_data_connector import LocalDataConnector
 from .sklearn_data_connector import SklearnDataConnector
 
 
-def create_data_connector(source_type: str, logger: Optional[Logger] = None):
+def create_data_connector(
+    connector_type: str, logger: Optional[Logger] = None
+) -> BaseDataConnector:
     """Creates and returns a data connector based on the specified source type.
 
     Args:
-        source_type (str): The type of data source. Supported values are: "local", "sklearn", "s3" or "gcs".
+        connector_type (str): The type of data source. Supported values are: "local", "sklearn".
         logger (Optional[Logger]): An optional logger instance for logging purposes.
 
     Returns:
-        LocalDataConnector or SklearnDataConnector: The corresponding data connector instance based on the `source_type`.
+        BaseDataConnector: The corresponding data connector instance based on the `connector_type`.
 
     Raises:
-        NotImplementedError: If the `source_type` is "s3" or "gcs", as these connectors are not yet implemented.
-        ValueError: If the `source_type` is not one of the supported values.
+        ValueError: If the `connector_type` is not one of the supported values.
     """
-    if source_type == "local":
-        return LocalDataConnector(logger)
+    SUPPORTED_CONNECTORS = {
+        "local": LocalDataConnector,
+        "sklearn": SklearnDataConnector,
+    }
 
-    elif source_type == "sklearn":
-        return SklearnDataConnector(logger)
+    if logger:
+        logger.info(f"Creating data connector for type: '{connector_type}'")
 
-    elif source_type == "s3":
-        raise NotImplementedError("The connector for S3 is not implemented yet.")
-
-    elif source_type == "gcs":
-        raise NotImplementedError("The connector for GCS is not implemented yet.")
+    if connector_type in SUPPORTED_CONNECTORS:
+        return SUPPORTED_CONNECTORS[connector_type](logger)
 
     else:
-        raise ValueError(f"Data source '{source_type}' is not supported.")
+        error_message = f"Data source '{connector_type}' is not supported."
+        if logger:
+            logger.error(error_message)
+
+        raise ValueError(error_message)

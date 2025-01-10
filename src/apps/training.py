@@ -8,7 +8,16 @@ from src.utils.logging import Logger
 
 
 def main():
+    """Main function to execute the training pipeline.
+
+    Loads configuration, initializes required components, and executes the
+    training pipeline to train a model and save the results.
+
+    Raises:
+        Exception: If any error occurs during pipeline execution.
+    """
     try:
+        # Load configuration
         config = load_config()
 
         # Initialize the logger
@@ -16,22 +25,25 @@ def main():
             log_level=config["logging"]["log_level"],
             log_file=config["logging"]["log_file"],
         )
-
         logger.info("Starting training...")
 
         # Initialize data connectors and load data
-        data_connector = create_data_connector(config["data"]["type"], logger)
-        data = data_connector.get_data(config["data"]["source"])
+        data_connector = create_data_connector(
+            connector_type=config["data"]["type"],
+            logger=logger,
+        )
+        data = data_connector.get_data(source=config["data"]["source"])
 
         # Initialize model tracker for saving results
         model_tracker = create_model_tracker(
-            config["tracking"]["type"], config["tracking"]["experiment_name"]
+            tracker_type=config["tracking"]["type"],
+            experiment_name=config["tracking"]["experiment_name"],
         )
 
         # Initialize object connector for saving data snapshots
         object_connector = create_object_connector(
-            config["object_connector"]["type"],
-            logger,
+            connector_type=config["object_connector"]["type"],
+            logger=logger,
             **config["object_connector"]["params"],
         )
 
@@ -45,12 +57,18 @@ def main():
         )
 
         # Run the training pipeline
-        pipeline.run(data, config["data"]["target_column"])
+        target_column = config["data"]["target_column"]
+        if target_column not in data.columns:
+            logger.error(f"Target column '{target_column}' not found in data.")
+            raise ValueError(f"Target column '{target_column}' not found in data.")
+
+        pipeline.run(data=data, target_column=target_column)
 
         logger.info("Training pipeline execution completed successfully.")
 
-    except Exception as e:
-        logger.critical(f"Error during training pipeline execution: {e}")
+    except Exception as error:
+        logger.critical(f"Error during training pipeline execution: {error}")
+        raise
 
 
 if __name__ == "__main__":

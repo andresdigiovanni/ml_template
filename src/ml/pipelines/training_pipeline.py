@@ -69,6 +69,7 @@ class TrainingPipeline:
             X_train = self.data_processor.fit_transform(X_train, y_train)
             X_test = self.data_processor.transform(X_test)
             processor_params = self.data_processor.get_params()
+            processor_transformations = self.data_processor.transformations
 
             # Ajuste de hiperparámetros
             self.logger.info("Starting hyperparameter tuning...")
@@ -103,6 +104,9 @@ class TrainingPipeline:
             # Guardar resultados
             self.model_tracker.log_model(self.model, "model.pkl")
             self.model_tracker.log_artifact(processor_params, "processor.pkl")
+            self.model_tracker.log_dict(
+                processor_transformations, "processor_transformations.json"
+            )
             self.model_tracker.log_metrics(metrics)
             self.model_tracker.log_params(best_params)
             self.model_tracker.log_figure(roc_auc_figure, "roc_auc_plot.png")

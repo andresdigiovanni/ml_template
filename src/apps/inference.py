@@ -6,7 +6,16 @@ from src.utils.logging import Logger
 
 
 def main():
+    """Main function to execute the inference pipeline.
+
+    Loads configuration, initializes required components, and executes the
+    inference pipeline to generate predictions.
+
+    Raises:
+        Exception: If any error occurs during pipeline execution.
+    """
     try:
+        # Load configuration
         config = load_config()
 
         # Initialize the logger
@@ -14,27 +23,33 @@ def main():
             log_level=config["logging"]["log_level"],
             log_file=config["logging"]["log_file"],
         )
-
         logger.info("Starting inference...")
 
-        # Initialize data connector and load data
-        data_connector = create_data_connector(config["data"]["type"], logger)
-        data = data_connector.get_data(config["data"]["source"])
+        # Initialize the data connector and load the data
+        data_connector = create_data_connector(
+            connector_type=config["data"]["type"],
+            logger=logger,
+        )
+        data = data_connector.get_data(source=config["data"]["source"])
 
-        # Drop target column from the data as it's not needed for inference
+        # Drop the target column as it's not needed for inference
         target_column = config["data"]["target_column"]
-        data = data.drop(columns=[target_column])
+        if target_column in data.columns:
+            data = data.drop(columns=[target_column])
+        else:
+            logger.warning(f"Target column '{target_column}' not found in data.")
 
-        # Initialize object connector
+        # Initialize the object connector
         object_connector = create_object_connector(
-            config["object_connector"]["type"],
-            logger,
+            connector_type=config["object_connector"]["type"],
+            logger=logger,
             **config["object_connector"]["params"],
         )
 
-        # Initialize model tracker
+        # Initialize the model tracker
         model_tracker = create_model_tracker(
-            config["tracking"]["type"], config["tracking"]["experiment_name"]
+            tracker_type=config["tracking"]["type"],
+            experiment_name=config["tracking"]["experiment_name"],
         )
 
         # Create and configure the inference pipeline
@@ -45,12 +60,13 @@ def main():
         )
 
         # Run the inference pipeline to generate predictions
-        pipeline.run(data)
+        pipeline.run(data=data)
 
         logger.info("Inference pipeline execution completed successfully.")
 
-    except Exception as e:
-        logger.critical(f"Error during inference pipeline execution: {e}")
+    except Exception as error:
+        logger.critical(f"Error during inference pipeline execution: {error}")
+        raise
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ import yaml
 
 
 def load_config(file_path: str = "config.yaml") -> Dict[str, Any]:
-    """Loads configuration from a YAML file and merges it with command-line arguments.
+    """Load configuration from a YAML file and merge it with command-line arguments.
 
     This function reads a base configuration file in YAML format, parses any command-line
     overrides provided in the form of key-value pairs (e.g., `key.subkey=value`), and
@@ -24,13 +24,17 @@ def load_config(file_path: str = "config.yaml") -> Dict[str, Any]:
 
 
 def _load_yaml(file_path: str) -> Dict[str, Any]:
-    """Loads a YAML file into a dictionary.
+    """Load a YAML file into a dictionary.
 
     Args:
         file_path (str): Path to the YAML file.
 
     Returns:
         Dict[str, Any]: The loaded YAML content as a dictionary.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the file cannot be parsed as YAML.
     """
     try:
         with open(file_path, "r") as file:
@@ -44,7 +48,7 @@ def _load_yaml(file_path: str) -> Dict[str, Any]:
 
 
 def _parse_command_line_args() -> Dict[str, Any]:
-    """Parses command-line arguments and converts them into a nested dictionary.
+    """Parse command-line arguments into a nested dictionary.
 
     Command-line arguments should be provided as key-value pairs, where nested keys are
     separated by dots (e.g., `key.subkey=value`).
@@ -60,19 +64,19 @@ def _parse_command_line_args() -> Dict[str, Any]:
         nargs="*",
         help="Key-value pairs for configuration (e.g., key.subkey=value).",
     )
-    args, _ = parser.parse_known_args(sys.argv)
+    args, _ = parser.parse_known_args(sys.argv[1:])
 
     nested_config = {}
     for arg in args.args:
         if "=" in arg:
             key, value = arg.split("=", 1)
-            _set_nested_value(nested_config, key.split("."), value)
+            _set_nested_value(nested_config, key.split("."), _convert_type(value))
 
     return nested_config
 
 
 def _set_nested_value(dictionary: Dict[str, Any], keys: list[str], value: Any) -> None:
-    """Sets a value in a nested dictionary based on a list of keys.
+    """Set a value in a nested dictionary based on a list of keys.
 
     Args:
         dictionary (Dict[str, Any]): The dictionary to modify.
@@ -86,7 +90,7 @@ def _set_nested_value(dictionary: Dict[str, Any], keys: list[str], value: Any) -
 
 
 def _merge_dicts(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merges two dictionaries, prioritizing override values.
+    """Recursively merge two dictionaries, prioritizing override values.
 
     Args:
         base (Dict[str, Any]): The base dictionary.
@@ -103,3 +107,24 @@ def _merge_dicts(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, A
             merged[key] = value
 
     return merged
+
+
+def _convert_type(value: str) -> Any:
+    """Convert a string value to its appropriate type.
+
+    Args:
+        value (str): The string value to convert.
+
+    Returns:
+        Any: The converted value as int, float, bool, or str.
+    """
+    try:
+        float_value = float(value)
+        # Return as int if the value is equivalent to an integer (e.g., 2.0 -> 2)
+        return int(float_value) if float_value.is_integer() else float_value
+
+    except ValueError:
+        if value.lower() in {"true", "false"}:
+            return value.lower() == "true"
+
+    return value

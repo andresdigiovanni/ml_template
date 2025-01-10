@@ -9,7 +9,7 @@ logging:
 
 model:
     problem_type: "classification"
-    scoring: "accuracy"
+    scoring: "roc_auc_ovr"
     direction: "maximize"
 
 tracking:

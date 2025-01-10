@@ -20,12 +20,15 @@ class DataMonitoringTool:
 
     def __init__(self, train_data: pd.DataFrame, model_tracker):
         """
-        Initializes the DataDriftChecker with training data and a model tracker.
+        Initializes the DataMonitoringTool with training data and a model tracker.
 
         Args:
             train_data (pd.DataFrame): The training data used as the reference dataset.
             model_tracker: The model tracker for logging reports and artifacts.
         """
+        if train_data.empty:
+            raise ValueError("The training data cannot be empty.")
+
         self.train_data = train_data
         self.model_tracker = model_tracker
 
@@ -38,13 +41,23 @@ class DataMonitoringTool:
 
         Returns:
             dict: A summary of the drift, quality, and stability test results.
+
+        Raises:
+            ValueError: If current_data is empty or has no matching columns with train_data.
         """
-        drift_results = {}
+        if current_data.empty:
+            raise ValueError("The current data cannot be empty.")
 
         # Ensure both datasets have the same columns
         columns_to_compare = self.train_data.columns.intersection(current_data.columns)
+
+        if columns_to_compare.empty:
+            raise ValueError("No matching columns between training and current data.")
+
         reference_data = self.train_data[columns_to_compare]
         current_data = current_data[columns_to_compare]
+
+        drift_results = {}
 
         # Run and log data drift report
         generate_and_log_report(
