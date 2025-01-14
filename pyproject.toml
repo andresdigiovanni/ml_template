@@ -17,6 +17,8 @@ evidently = "^0.5.0"
 pandas = "^2.2.3"
 shap = "^0.46.0"
 cross-ml = "^1.0.0"
+lightgbm = "^4.5.0"
+catboost = "^1.2.7"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
