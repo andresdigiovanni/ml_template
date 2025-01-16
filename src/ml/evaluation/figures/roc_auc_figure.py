@@ -149,3 +149,67 @@ class RocAucFigure:
         ax.set_ylabel("True Positive Rate")
         ax.set_title(title)
         ax.legend(loc="lower right")
+
+
+# Example of use
+if __name__ == "__main__":
+    import numpy as np
+    from sklearn.datasets import load_breast_cancer, load_iris
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import accuracy_score, roc_auc_score
+    from sklearn.model_selection import cross_val_predict
+
+    def evaluate_model(X, y, clf):
+        y_prob = cross_val_predict(clf, X, y, cv=5, method="predict_proba")
+
+        # Calculate accuracy
+        y_pred = np.argmax(y_prob, axis=1)
+        accuracy = accuracy_score(y, y_pred)
+
+        # Calculate ROC AUC score (binary or multiclass)
+        if len(np.unique(y)) == 2:
+            roc_auc = roc_auc_score(y, y_prob[:, 1])
+        else:
+            roc_auc = roc_auc_score(y, y_prob, multi_class="ovr")
+
+        return {"accuracy": accuracy, "roc_auc": roc_auc, "y_prob": y_prob}
+
+    # Example 1: Binary classification (Breast Cancer dataset)
+    data = load_breast_cancer()
+    X, y = data.data, data.target
+    class_names = data.target_names
+
+    clf = RandomForestClassifier(random_state=42)
+    scores = evaluate_model(X, y, clf)
+
+    print("\nBinary Classification (Breast Cancer Dataset):")
+    print(f"- Accuracy: {scores['accuracy']:.4f}")
+    print(f"- ROC AUC: {scores['roc_auc']:.4f}\n")
+
+    fig = RocAucFigure.create_figure(
+        y_true=y,
+        y_prob=scores["y_prob"],
+        model_classes=np.arange(len(class_names)),
+        title="ROC Curve (Breast Cancer Dataset)",
+    )
+    plt.show()
+
+    # Example 2: Multiclass classification (Iris dataset)
+    data = load_iris()
+    X, y = data.data, data.target
+    class_names = data.target_names
+
+    clf = RandomForestClassifier(random_state=42)
+    scores = evaluate_model(X, y, clf)
+
+    print("\nMulticlass Classification (Iris Dataset):")
+    print(f"- Accuracy: {scores['accuracy']:.4f}")
+    print(f"- ROC AUC: {scores['roc_auc']:.4f}")
+
+    fig = RocAucFigure.create_figure(
+        y_true=y,
+        y_prob=scores["y_prob"],
+        model_classes=np.arange(len(class_names)),
+        title="ROC Curve (Iris Dataset)",
+    )
+    plt.show()
