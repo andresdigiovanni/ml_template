@@ -21,6 +21,12 @@ def main():
     models = selector.evaluate(verbose=True)
     print(models)
 
+    best_model = models["Accuracy"].idxmax()
+    print(f"\nBest model: {best_model}")
+
+    cls = next(x for x in selector.models if x.__class__.__name__ == best_model)
+    print(cls)
+
 
 if __name__ == "__main__":
     main()

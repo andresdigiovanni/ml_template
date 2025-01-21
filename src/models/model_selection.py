@@ -66,7 +66,7 @@ from tqdm import tqdm
 
 
 class ModelSelection:
-    def __init__(self, X, y, *, task, models=None, cv=5):
+    def __init__(self, X, y, *, task, models=None, cv=5, groups=None):
         """
         Initialize the class with models and data.
 
@@ -76,6 +76,7 @@ class ModelSelection:
             task (str): Type of task ('classification' or 'regression').
             models (list, optional): List of model instances. Defaults to None.
             cv (int or callable, optional): Cross-validation strategy. Defaults to 5.
+            groups (pd.Series or np.ndarray, optional): Group labels for the samples. Only used in conjunction with a “Group” cv instance (e.g., GroupKFold). Defaults to None.
         """
         if task not in ["classification", "regression"]:
             raise ValueError(
@@ -87,6 +88,7 @@ class ModelSelection:
         self.task = task
         self.models = models or self._select_models()
         self.cv = cv
+        self.groups = groups
         self.scoring = self._select_scoring()
 
     def _select_models(self):
@@ -106,6 +108,8 @@ class ModelSelection:
         return model_selector[self.task](n_samples)
 
     def _classification_models(self, n_samples):
+        is_binary = len(np.unique(self.y)) == 2
+
         models = [
             BernoulliNB(),
             CalibratedClassifierCV(),
@@ -114,10 +118,17 @@ class ModelSelection:
             GaussianNB(),
             HistGradientBoostingClassifier(),
             LinearDiscriminantAnalysis(),
-            lgb.LGBMClassifier(verbose=-1),
+            lgb.LGBMClassifier(
+                objective="binary" if is_binary else "multiclass",
+                metric="binary_logloss" if is_binary else "multi_logloss",
+                verbose=-1,
+            ),
             LogisticRegression(max_iter=1_000),
             QuadraticDiscriminantAnalysis(),
-            xgb.XGBClassifier(eval_metric="logloss"),
+            xgb.XGBClassifier(
+                objective="binary:logistic" if is_binary else "multi:softprob",
+                eval_metric="logloss" if is_binary else "mlogloss",
+            ),
         ]
 
         if n_samples < 100_000:
@@ -127,7 +138,6 @@ class ModelSelection:
                     BaggingClassifier(),
                     DecisionTreeClassifier(),
                     ExtraTreesClassifier(),
-                    GradientBoostingClassifier(),
                     KNeighborsClassifier(),
                     RandomForestClassifier(),
                 ]
@@ -136,6 +146,7 @@ class ModelSelection:
         if n_samples < 10_000:
             models.extend(
                 [
+                    GradientBoostingClassifier(),
                     LabelPropagation(),
                     LabelSpreading(),
                     MLPClassifier(max_iter=1_000),
@@ -256,7 +267,13 @@ class ModelSelection:
 
                 start_time = time.time()
                 scores = cross_validate(
-                    model, self.X, self.y, cv=self.cv, scoring=self.scoring, n_jobs=-1
+                    model,
+                    self.X,
+                    self.y,
+                    cv=self.cv,
+                    groups=self.groups,
+                    scoring=self.scoring,
+                    n_jobs=-1,
                 )
                 elapsed_time = round(time.time() - start_time, 2)
 

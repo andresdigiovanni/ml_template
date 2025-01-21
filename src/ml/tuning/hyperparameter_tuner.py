@@ -1,11 +1,9 @@
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import optuna
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import cross_validate
-
-from src.tracking import BaseModelTracker
 
 
 class HyperparameterTuner:
@@ -14,14 +12,15 @@ class HyperparameterTuner:
 
     Attributes:
         model (BaseEstimator): The machine learning model to optimize.
-        scoring (str or callable): Scoring metric, either a string recognized by scikit-learn or a custom callable.
+        scoring (Union[str, Callable]): Scoring metric, either a string recognized by scikit-learn or a custom callable.
         direction (str): Optimization direction ('maximize' or 'minimize').
-        model_tracker: A model tracker connector for saving models and results.
+        model_tracker (Optional): A model tracker connector for saving models and results.
         param_grid (dict): Hyperparameter search space.
-        cv (int): Number of cross-validation folds.
+        cv (Union[int, Callable]): Number of cross-validation folds or a custom cross-validation generator.
+        groups (Optional): Group labels for cross-validation splitting.
         n_trials (int): Number of optimization trials.
-        best_params_ (dict): The best hyperparameters found after optimization.
-        best_score_ (float): The best score achieved during optimization.
+        best_params_ (Optional[dict]): The best hyperparameters found after optimization.
+        best_score_ (Optional[float]): The best score achieved during optimization.
     """
 
     def __init__(
@@ -29,22 +28,24 @@ class HyperparameterTuner:
         model: BaseEstimator,
         scoring: Union[str, Callable],
         direction: str,
-        model_tracker: BaseModelTracker,
-        param_grid: dict = None,
+        model_tracker=None,
+        param_grid: Optional[dict] = None,
         cv: Union[int, Callable] = 5,
-        n_trials: int = 50,
-    ):
+        groups: Optional = None,
+        n_trials: int = 100,
+    ) -> None:
         """
         Initializes the HyperparameterTuner.
 
         Args:
             model (BaseEstimator): Machine learning model to optimize.
-            scoring (str or callable): Scoring metric for evaluation.
+            scoring (Union[str, Callable]): Scoring metric for evaluation.
             direction (str): Optimization direction ('maximize' or 'minimize').
-            model_tracker (BaseModelTracker): The connector for saving models and results.
-            param_grid (dict, optional): Hyperparameter search space.
-            cv (int, optional): Number of cross-validation folds. Default is 5.
-            n_trials (int, optional): Number of optimization trials. Default is 50.
+            model_tracker (Optional): The connector for saving models and results.
+            param_grid (Optional[dict]): Hyperparameter search space.
+            cv (Union[int, Callable]): Number of cross-validation folds or a custom generator.
+            groups (Optional): Group labels for the samples.
+            n_trials (int): Number of optimization trials. Default is 100.
         """
         self.model = model
         self.scoring = scoring
@@ -54,6 +55,7 @@ class HyperparameterTuner:
             model.__class__.__name__
         )
         self.cv = cv
+        self.groups = groups
         self.n_trials = n_trials
         self.best_params_ = None
         self.best_score_ = None
@@ -82,6 +84,22 @@ class HyperparameterTuner:
                     if "Classifier" in model_name
                     else ["squared_error", "friedman_mse", "absolute_error", "poisson"],
                 },
+            }
+        elif model_name in ("LGBMClassifier", "LGBMRegressor"):
+            return {
+                "num_leaves": {"range": (20, 150)},
+                "learning_rate": {"range": (1e-4, 0.1), "log": True},
+                "max_depth": {"range": (3, 20)},
+                "min_child_samples": {"range": (10, 100)},
+                "subsample": {"range": (0.5, 0.9)},
+                "colsample_bytree": {"range": (0.5, 0.9)},
+                "reg_alpha": {"range": (1e-6, 10.0), "log": True},
+                "reg_lambda": {"range": (1e-6, 10.0), "log": True},
+                "n_estimators": {"range": (50, 200)},
+                "min_split_gain": {"range": (0.0, 1.0)},
+                "max_bin": {"range": (128, 512)},
+                "feature_fraction": {"range": (0.5, 1.0)},
+                "boosting_type": {"range": ["gbdt", "dart", "goss"]},
             }
         elif model_name == "LinearRegression":
             return {
@@ -112,13 +130,13 @@ class HyperparameterTuner:
         elif model_name in ("XGBClassifier", "XGBRegressor"):
             return {
                 "colsample_bytree": {"range": (0.5, 1.0)},
-                "gamma": {"range": (1e-4, 1.0), "log": True},
-                "learning_rate": {"range": (1e-4, 0.3), "log": True},
-                "max_depth": {"range": (4, 20)},
+                "gamma": {"range": (1e-6, 5.0), "log": True},
+                "learning_rate": {"range": (1e-4, 0.5), "log": True},
+                "max_depth": {"range": (3, 20)},
                 "min_child_weight": {"range": (1e-4, 10.0), "log": True},
-                "n_estimators": {"range": (20, 200)},
-                "reg_alpha": {"range": (1e-4, 10.0), "log": True},
-                "reg_lambda": {"range": (1e-4, 10.0), "log": True},
+                "n_estimators": {"range": (50, 200)},
+                "reg_alpha": {"range": (1e-6, 10.0), "log": True},
+                "reg_lambda": {"range": (1e-6, 10.0), "log": True},
                 "subsample": {"range": (0.5, 1.0)},
                 "max_bin": {"range": (128, 512)},
                 "grow_policy": {"range": ["depthwise", "lossguide"]},
@@ -132,8 +150,8 @@ class HyperparameterTuner:
 
         Args:
             trial (optuna.trial.Trial): Optuna trial object.
-            X (pd.DataFrame): Feature matrix.
-            y (pd.Series): Target vector.
+            X (np.ndarray): Feature matrix.
+            y (np.ndarray): Target vector.
 
         Returns:
             float: The mean score across cross-validation folds.
@@ -154,12 +172,15 @@ class HyperparameterTuner:
                 params[key] = trial.suggest_float(key, range_[0], range_[1], log=log)
 
         self.model.set_params(**params)
-        scores = cross_validate(self.model, X, y, scoring=self.scoring, cv=self.cv)
+        scores = cross_validate(
+            self.model, X, y, scoring=self.scoring, cv=self.cv, groups=self.groups
+        )
         score_mean = np.mean(scores["test_score"])
 
-        with self.model_tracker.run(nested=True):
-            self.model_tracker.log_params(params)
-            self.model_tracker.log_metric(self.scoring, score_mean)
+        if self.model_tracker:
+            with self.model_tracker.run(nested=True):
+                self.model_tracker.log_params(params)
+                self.model_tracker.log_metric(self.scoring, score_mean)
 
         return score_mean
 
@@ -168,8 +189,8 @@ class HyperparameterTuner:
         Performs hyperparameter optimization and cross-validation.
 
         Args:
-            X (pd.DataFrame): Feature matrix.
-            y (pd.Series): Target vector.
+            X (np.ndarray): Feature matrix.
+            y (np.ndarray): Target vector.
 
         Returns:
             dict: Best hyperparameters found.
