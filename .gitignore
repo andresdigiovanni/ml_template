@@ -47,3 +47,4 @@ dist/**
 *.nls.*.json
 *.i18n.json
 00.01*
+.qodo

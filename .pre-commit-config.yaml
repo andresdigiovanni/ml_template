@@ -1,6 +1,7 @@
 repos:
+  # Format with Ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.6
+    rev: v0.10.0
     hooks:
       - id: ruff
         args: [ --fix ]
@@ -8,21 +9,13 @@ repos:
 
   # Automatically sorts and formats Python imports
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 6.0.1
     hooks:
       - id: isort
         args: ["--profile", "black"]
 
-  # Static type checker
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.9.0
-  #   hooks:
-  #     - id: mypy
-
-  # Format Jupyter Notebooks
-  # - repo: https://github.com/nbQA-dev/nbQA
-  #   rev: 1.8.5
-  #   hooks:
-  #     - id: nbqa-black
-  #     - id: nbqa-pyupgrade
-  #       args: ["--py37-plus"]
+  # Detect hardcoded secrets
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.0
+    hooks:
+      - id: gitleaks

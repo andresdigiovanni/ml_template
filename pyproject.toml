@@ -1,32 +1,53 @@
-[tool.poetry]
-name = "template_ml"
-version = "0.0.1"
-description = "Machine Learning template"
-authors = ["Andres Di Giovanni <andresdigiovanni@gmail.com>"]
+[project]
+name = "ml-template"
+version = "0.1.0"
+description = "Add your description here"
+authors = [{ name = "Andres Di Giovanni", email = "andresdigiovanni@gmail.com" }]
 readme = "README.md"
-packages = [{include = "src"}]
+license = "MIT"
+requires-python = ">=3.11"
 
-[tool.poetry.dependencies]
-python = ">=3.10,<3.12"
-pyyaml = "^6.0.2"
-scikit-learn = "^1.5.2"
-optuna = "^4.0.0"
-xgboost = "^2.1.2"
-numpy = "1.26.4"
-evidently = "^0.5.0"
-pandas = "^2.2.3"
-shap = "^0.46.0"
-cross-ml = "^1.0.0"
-lightgbm = "^4.5.0"
-catboost = "^1.2.7"
+dependencies = [
+    "catboost>=1.2.7",
+    "cross-ml>=1.2.1",
+    "evidently>=0.6.6",
+    "lightgbm>=4.6.0",
+    "optuna>=4.2.1",
+    "scikit-learn>=1.6.1",
+    "shap>=0.47.0",
+    "xgboost>=2.1.4",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.3"
-pre-commit = "^4.0.1"
+[dependency-groups]
+dev-dependencies = [
+    "pytest>=7.2.0",
+    "ipykernel>=6.29.5",
+]
+commits = [
+    "pre-commit>=4.1.0",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.ruff]
-exclude = [".venv", "__init__.py"]
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.black]
+line-length = 88
+include = '\\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | docs
+)/
+'''
